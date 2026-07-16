@@ -1,70 +1,123 @@
-# LGPhone Agent - Python ADB Bridge
+# LGPhone Agent Tool
+
+Agent Tool chạy trên PC, nhận lệnh từ web app qua Supabase và điều khiển Android qua ADB.
+
+## Kiến trúc
+
+```
+Web App (React) → Supabase (device_commands) → Agent Tool (Node.js) → ADB → Android
+```
+
+## Yêu cầu
+
+1. **Node.js** 18+
+2. **ADB** (Android Debug Bridge)
+3. **Supabase Service Role Key** — để agent cập nhật trạng thái lệnh
 
 ## Cài đặt
 
-### Yêu cầu
-- Python 3.8+
-- pip (Python package installer)
+### Bước 1: Cài ADB
 
-### Cài đặt thư viện
+**Windows:** Tải Platform Tools từ https://developer.android.com/tools/releases/platform-tools → giải nén → thêm vào PATH
+
+**macOS:**
 ```bash
-pip install requests python-dotenv
+brew install android-platform-tools
 ```
 
-### Cấu hình
-Tạo file `.env` trong thư mục này với nội dung:
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs...
+**Linux:**
+```bash
+sudo apt install adb
 ```
 
-> Lấy các giá trị này từ file `.env` của dự án web (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, và SUPABASE_SERVICE_ROLE_KEY).
+Kiểm tra:
+```bash
+adb version
+```
 
-## Chạy Agent
+### Bước 2: Cài Agent
 
 ```bash
-python lgphone_agent.py
+cd lgphone-agent
+npm install
 ```
 
-Hoặc chỉ định trực tiếp:
+### Bước 3: Lấy Service Role Key
+
+Vào Supabase Dashboard:
+```
+https://supabase.com/dashboard/project/nyuvpiztruwdmvogtwpz/settings/api
+```
+
+Tìm mục **service_role** → **Reveal** → **Copy**
+
+### Bước 4: Cấu hình
+
+Tạo file `.env`:
 ```bash
-python lgphone_agent.py --supabase-url https://xxx.supabase.co --supabase-key eyJ... --service-key eyJ...
+cp .env.example .env
 ```
 
-## Tính năng
+Mở `.env`, dán service_role key:
+```
+SUPABASE_URL=https://nyuvpiztruwdmvogtwpz.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...your-service-role-key
+```
 
-1. **Auto-tìm ADB**: Tự động tìm ADB trong PATH, Android SDK, hoặc tải về tự động nếu chưa có.
-2. **Phát hiện thiết bị**: Tự động phát hiện điện thoại thật (USB) và máy ảo (emulator).
-3. **Đồng bộ trạng thái**: Cập nhật trạng thái online/offline của thiết bị lên web.
-4. **Điều khiển từ xa**: Nhận lệnh từ web (Home, Back, Power, Volume, Reboot, Screenshot, Tap, Swipe).
-5. **Cài đặt APK**: Cài đặt ứng dụng APK lên thiết bị từ xa.
-6. **Gỡ ứng dụng**: Gỡ ứng dụng người dùng (giữ lại app hệ thống).
+### Bước 5: Kết nối thiết bị
 
-## Cách hoạt động
+**USB:**
+```bash
+adb devices
+# Bật USB Debugging trên điện thoại → cắm USB → chấp nhận RSA key
+```
 
-1. Agent chạy vòng lặp, polling Supabase mỗi 2 giây.
-2. Khi bạn bấm nút trên web (Home, Back, Power...), lệnh được lưu vào Supabase.
-3. Agent đọc lệnh, gửi đến thiết bị qua ADB.
-4. Trạng thái thiết bị được đồng bộ lên web theo thời gian thực.
+**WiFi:**
+```bash
+adb tcpip 5555
+adb connect <device-ip>:5555
+```
 
-## Lệnh ADB được hỗ trợ
+### Bước 6: Chạy
 
-| Lệnh web | Hành động ADB |
-|----------|---------------|
-| key 3 | Home |
-| key 4 | Back |
-| key 26 | Power on/off |
-| key 24 | Volume Up |
-| key 25 | Volume Down |
-| key 187 | Recent Apps |
-| screenshot | Chụp màn hình |
-| reboot | Khởi động lại |
-| tap x,y | Chạm vào màn hình |
-| swipe x1,y1,x2,y2 | Vuốt màn hình |
+```bash
+npm start
+```
 
-## Lưu ý
-- Đảm bảo ADB server đang chạy (`adb start-server`).
-- Đối với máy thật: bật USB Debugging trong Developer Options.
-- Đối với máy ảo: đảm bảo emulator đang chạy.
-- Agent cần kết nối internet để giao tiếp với Supabase.
+## Lệnh hỗ trợ
+
+| Lệnh | Tham số | Mô tả |
+|------|---------|-------|
+| tap | x, y | Chạm tọa độ |
+| swipe | x1, y1, x2, y2, duration | Vuốt |
+| input_text | text | Nhập văn bản |
+| keyevent | keycode | Phím cứng |
+| screenshot | — | Chụp màn hình |
+| start_app | package | Mở app |
+| stop_app | package | Dừng app |
+| clear_data | package | Xóa data app |
+| install_app | apk_path | Cài APK |
+| reboot | — | Khởi động lại |
+| wake | — | Đánh thức |
+| back | — | Phím Back |
+| home | — | Phím Home |
+| script | script (JSON) | Chuỗi lệnh |
+
+## Script example
+
+```json
+[
+  {"action": "tap", "x": 500, "y": 500},
+  {"action": "wait", "ms": 1000},
+  {"action": "input_text", "text": "Hello"},
+  {"action": "tap", "x": 300, "y": 800}
+]
+```
+
+## Troubleshooting
+
+- **"adb: command not found"** — Thêm ADB vào PATH
+- **"Device unauthorized"** — Chấp nhận RSA key trên điện thoại
+- **"Missing SUPABASE_SERVICE_ROLE_KEY"** — Tạo file .env với service_role key
+- **"Device not connected"** — Chạy `adb devices` để kiểm tra
