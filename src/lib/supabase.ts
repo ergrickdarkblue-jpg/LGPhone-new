@@ -69,6 +69,22 @@ export type SystemSetting = {
   updated_at: string;
 };
 
+export type DeviceRental = {
+  id: string;
+  device_id: string;
+  user_id: string;
+  assigned_by: string | null;
+  start_time: string;
+  end_time: string | null;
+  status: 'active' | 'expired' | 'returned' | 'cancelled';
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  device?: { id: string; name: string; serial: string; model: string };
+  user?: { id: string; email: string; full_name: string };
+  assigner?: { id: string; email: string; full_name: string };
+};
+
 export type AITemplate = {
   id: string;
   name: string;

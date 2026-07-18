@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Sidebar, { type ViewName } from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Devices from './components/Devices';
+import DeviceRentals from './components/DeviceRentals';
 import Users from './components/Users';
 import Announcements from './components/Announcements';
 import Files from './components/Files';
@@ -80,6 +81,7 @@ function MainApp() {
         <main className="flex-1 overflow-y-auto">
           {effectiveView === 'dashboard' && <Dashboard onNavigate={setView} />}
           {effectiveView === 'devices' && <Devices />}
+          {effectiveView === 'rentals' && <DeviceRentals />}
           {effectiveView === 'ai' && <AI />}
           {effectiveView === 'users' && <Users />}
           {effectiveView === 'announcements' && <Announcements />}

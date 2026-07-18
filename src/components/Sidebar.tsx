@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { LayoutDashboard, Smartphone, Users, Megaphone, FolderUp, Settings, LogOut, ChevronLeft, ChevronRight, X, Power, Sun, Moon, Globe, KeyRound, Download, Eye, EyeOff, Bot } from 'lucide-react';
+import { LayoutDashboard, Smartphone, Users, Megaphone, FolderUp, Settings, LogOut, ChevronLeft, ChevronRight, X, Power, Sun, Moon, Globe, KeyRound, Download, Eye, EyeOff, Bot, CalendarClock } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/app-context';
 import type { Profile } from '../lib/supabase';
 
-export type ViewName = 'dashboard' | 'devices' | 'ai' | 'users' | 'announcements' | 'files' | 'settings';
+export type ViewName = 'dashboard' | 'devices' | 'rentals' | 'ai' | 'users' | 'announcements' | 'files' | 'settings';
 
 type SidebarProps = {
   current: ViewName;
@@ -27,6 +27,7 @@ export default function Sidebar({ current, onNavigate, collapsed, onToggleCollap
   const navItems: { id: ViewName; label: string; icon: typeof LayoutDashboard; restricted?: boolean }[] = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { id: 'devices', label: t('devices'), icon: Smartphone },
+    { id: 'rentals', label: t('rentals'), icon: CalendarClock, restricted: true },
     { id: 'ai', label: t('aiAutomation'), icon: Bot },
     { id: 'users', label: t('users'), icon: Users, restricted: true },
     { id: 'announcements', label: t('announcements'), icon: Megaphone, restricted: true },
@@ -100,7 +101,7 @@ export default function Sidebar({ current, onNavigate, collapsed, onToggleCollap
         {/* Download agent button (admin only) */}
         {isAdmin && !collapsed && (
           <div className="px-3 pb-2">
-            <a href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/agent-files/lgphone-agent.zip`} download className="btn-3d btn-3d-ghost w-full text-xs">
+            <a href="/lgphone-agent.zip" download className="btn-3d btn-3d-ghost w-full text-xs">
               <Download className="w-3.5 h-3.5" /> {t('downloadAgent')}
             </a>
           </div>

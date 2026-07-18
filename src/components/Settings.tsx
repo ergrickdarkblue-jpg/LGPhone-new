@@ -99,9 +99,9 @@ function AgentDownload() {
       </div>
       <div className="panel-inner p-4 space-y-3">
         <p className="text-sm text-[var(--text-secondary)]">
-          File ZIP chứa Python ADB Agent — bridge giữa web LGPhone và thiết bị Android. Giải nén, tạo file .env, và chạy <code className="text-cyan-400">python lgphone_agent.py</code>.
+          File ZIP chứa Node.js ADB Agent — bridge giữa web LGPhone và thiết bị Android. Giải nén, tạo file .env, và chạy <code className="text-cyan-400">start.bat</code>.
         </p>
-        <a href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/agent-files/lgphone-agent.zip`} download className="btn-3d btn-3d-cyan">
+        <a href="/lgphone-agent.zip" download className="btn-3d btn-3d-cyan">
           <Download className="w-4 h-4" /> {t('downloadAgent')}
         </a>
       </div>

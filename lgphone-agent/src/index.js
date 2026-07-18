@@ -62,9 +62,22 @@ async function scanDevices() {
     if (!connectedDevices.has(serial)) {
       connectedDevices.add(serial);
       console.log(`[DEVICE+] ${serial}`);
-      const props = await new ADB(serial).getProperties();
+      const deviceAdb = new ADB(serial);
+      const props = await deviceAdb.getProperties();
       console.log(`  Model: ${props.model}, Android: ${props.android_version}`);
-      await supabase.from('devices').update({ status: 'online' }).eq('serial', serial);
+      // Auto-register device in Supabase (upsert by serial)
+      const { error: upsertErr } = await supabase.from('devices').upsert({
+        serial,
+        name: props.model || serial,
+        model: props.model || null,
+        android_version: props.android_version || null,
+        status: 'online',
+        last_seen: new Date().toISOString(),
+      }, { onConflict: 'serial' });
+      if (upsertErr) console.log(`  [WARN] upsert failed: ${upsertErr.message}`);
+    } else {
+      // Update last_seen for already connected devices
+      await supabase.from('devices').update({ last_seen: new Date().toISOString() }).eq('serial', serial);
     }
   }
   for (const serial of [...connectedDevices]) {

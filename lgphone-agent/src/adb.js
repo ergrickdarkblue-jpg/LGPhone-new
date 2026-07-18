@@ -57,16 +57,16 @@ export class ADB {
   }
 
   async screenshot() {
-    const timestamp = Date.now();
-    const remotePath = `/sdcard/screenshot_${timestamp}.png`;
-    const localPath = `./screenshots/screenshot_${timestamp}.png`;
+    const remotePath = `/sdcard/lg_screen.png`;
+    const localPath = `./screenshots/${this.serial || 'default'}.png`;
     const fs = await import('fs');
     fs.mkdirSync('./screenshots', { recursive: true });
     const shotResult = await this.exec(`shell screencap -p ${remotePath}`);
     if (!shotResult.success) return shotResult;
     const pullResult = await this.exec(`pull ${remotePath} ${localPath}`);
     await this.exec(`shell rm ${remotePath}`);
-    return { success: pullResult.success, output: localPath, error: pullResult.error };
+    if (!pullResult.success) return pullResult;
+    return { success: true, output: localPath, error: '' };
   }
 
   async startApp(packageName) {

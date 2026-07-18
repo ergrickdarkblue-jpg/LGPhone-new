@@ -1,4 +1,29 @@
 import { ADB } from './adb.js';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+async function downloadApk(storagePath) {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || 'https://nyuvpiztruwdmvogtwpz.supabase.co',
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    const { data, error } = await supabase.storage.from('app-files').download(storagePath);
+    if (error || !data) return { success: false, error: error?.message || 'Download failed' };
+    const buffer = Buffer.from(await data.arrayBuffer());
+    const localDir = join(__dirname, '..', 'downloads');
+    mkdirSync(localDir, { recursive: true });
+    const localPath = join(localDir, storagePath.split('/').pop());
+    writeFileSync(localPath, buffer);
+    return { success: true, output: localPath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
 
 export async function executeCommand(command) {
   const { command_type, command_data, device_serial } = command;
@@ -22,13 +47,28 @@ export async function executeCommand(command) {
       if (!text) return { success: false, error: 'Missing text' };
       return await adb.inputText(text);
     }
-    case 'keyevent': {
+    case 'keyevent':
+    case 'key': {
       const { keycode } = command_data;
       if (!keycode) return { success: false, error: 'Missing keycode' };
       return await adb.keyevent(keycode);
     }
-    case 'screenshot':
-      return await adb.screenshot();
+    case 'screenshot': {
+      const shotResult = await adb.screenshot();
+      if (!shotResult.success) return shotResult;
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL || 'https://nyuvpiztruwdmvogtwpz.supabase.co',
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+      const { readFileSync } = await import('fs');
+      const fileBuffer = readFileSync(shotResult.output);
+      const { error: upErr } = await supabase.storage
+        .from('screenshots')
+        .upload(`${device_serial}.png`, fileBuffer, { upsert: true, contentType: 'image/png' });
+      if (upErr) return { success: false, error: `Screenshot taken but upload failed: ${upErr.message}` };
+      return { success: true, output: `screenshot://${device_serial}.png` };
+    }
     case 'start_app': {
       const { package: pkg } = command_data;
       if (!pkg) return { success: false, error: 'Missing package name' };
@@ -45,9 +85,21 @@ export async function executeCommand(command) {
       return await adb.clearData(pkg);
     }
     case 'install_app': {
-      const { apk_path } = command_data;
+      const { apk_path, app_file_id } = command_data;
       if (!apk_path) return { success: false, error: 'Missing apk_path' };
-      return await adb.installApp(apk_path);
+      const downloadResult = await downloadApk(apk_path);
+      if (!downloadResult.success) return downloadResult;
+      const installResult = await adb.installApp(downloadResult.output);
+      if (app_file_id) {
+        const status = installResult.success ? 'installed' : 'failed';
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.SUPABASE_URL || 'https://nyuvpiztruwdmvogtwpz.supabase.co',
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+        await supabase.from('app_files').update({ status }).eq('id', app_file_id);
+      }
+      return installResult;
     }
     case 'uninstall_app': {
       const { package: pkg } = command_data;
@@ -55,6 +107,7 @@ export async function executeCommand(command) {
       return await adb.uninstallApp(pkg);
     }
     case 'reboot':
+    case 'reset':
       return await adb.reboot();
     case 'wake':
       return await adb.wake();
