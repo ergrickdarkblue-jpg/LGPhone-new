@@ -1,50 +1,43 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, type Profile } from './supabase';
+import type { Lang } from './i18n';
+import { getT } from './i18n';
 
-type AuthContextType = {
-  session: Session | null;
+interface AuthState {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  changePassword: (newPassword: string) => Promise<{ error: string | null }>;
-};
+}
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthState>({} as AuthState);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (uid: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
-    setProfile(data as Profile | null);
-  };
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        fetchProfile(data.session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
+    let mounted = true;
+
+    const loadProfile = async (userId: string) => {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      if (mounted) setProfile(data as Profile | null);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user && mounted) loadProfile(session.user.id);
+      else if (mounted) setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      if (sess?.user) {
-        (async () => { await fetchProfile(sess.user.id); })();
-      } else {
-        setProfile(null);
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) loadProfile(session.user.id);
+      else { if (mounted) { setProfile(null); setLoading(false); } }
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
+
+  useEffect(() => { if (profile) setLoading(false); }, [profile]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -54,27 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
-    setSession(null);
-  };
-
-  const refreshProfile = async () => {
-    if (session?.user) await fetchProfile(session.user.id);
-  };
-
-  const changePassword = async (newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    return { error: error?.message || null };
   };
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut, refreshProfile, changePassword }}>
+    <AuthContext.Provider value={{ profile, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+export const useAuth = () => useContext(AuthContext);
+
+interface AppState {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: string) => string;
 }
+
+const AppContext = createContext<AppState>({} as AppState);
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [lang, setLang] = useState<Lang>('vi');
+  const t = getT(lang);
+  return <AppContext.Provider value={{ lang, setLang, t }}>{children}</AppContext.Provider>;
+}
+
+export const useApp = () => useContext(AppContext);

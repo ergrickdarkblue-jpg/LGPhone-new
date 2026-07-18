@@ -29,6 +29,45 @@ Deno.serve(async (req: Request) => {
     const body = req.method === "POST" || req.method === "PUT" ? await req.json().catch(() => ({})) : {};
     const isAdmin = profile.role === "admin";
 
+    if (action === "create_user") {
+      if (!isAdmin) return json({ error: "Admin only" }, 403);
+      const { email, password, full_name, role, can_control, can_power, can_upload, can_view, can_edit } = body;
+      const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
+        email, password, email_confirm: true,
+      });
+      if (createErr) return json({ error: createErr.message }, 400);
+      const { error: profileErr } = await adminClient.from("profiles").insert({
+        id: newUser.user.id, email, full_name: full_name || "",
+        role: role || "operator",
+        can_control: !!can_control, can_power: !!can_power, can_upload: !!can_upload,
+        can_view: can_view !== false, can_edit: !!can_edit, is_active: true,
+      });
+      if (profileErr) return json({ error: profileErr.message }, 400);
+      return json({ success: true });
+    }
+
+    if (action === "update_user") {
+      if (!isAdmin) return json({ error: "Admin only" }, 403);
+      const { user_id, full_name, role, can_control, can_power, can_upload, can_view, can_edit, is_active } = body;
+      const { error: updateErr } = await adminClient.from("profiles").update({
+        full_name, role, can_control: !!can_control, can_power: !!can_power,
+        can_upload: !!can_upload, can_view: !!can_view, can_edit: !!can_edit, is_active: is_active !== false,
+      }).eq("id", user_id);
+      if (updateErr) return json({ error: updateErr.message }, 400);
+      return json({ success: true });
+    }
+
+    if (action === "register_app") {
+      if (!profile.can_upload && !isAdmin) return json({ error: "No upload permission" }, 403);
+      const { filename, file_path, file_size, package_name, is_system, device_id } = body;
+      const { data, error } = await adminClient.from("app_files").insert({
+        filename, file_path, file_size: file_size || 0, package_name: package_name || null,
+        is_system: !!is_system, device_id: device_id || null, uploaded_by: userData.user.id,
+      }).select().maybeSingle();
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true, app: data });
+    }
+
     if (action === "assign_device") {
       if (!profile.can_control && !isAdmin) return json({ error: "No control permission" }, 403);
       const { device_id } = body;
@@ -55,37 +94,12 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, status: newStatus });
     }
 
-    if (action === "adb_command") {
-      if (!profile.can_control && !isAdmin) return json({ error: "No control permission" }, 403);
-      const { device_serial, command, args } = body;
-      await adminClient.from("system_settings").upsert({
-        key: `cmd_${device_serial}_${Date.now()}`,
-        value: JSON.stringify({ command, args, timestamp: Date.now() }),
-        updated_by: userData.user.id,
-      });
-      return json({ success: true, message: "Command queued" });
-    }
-
-    if (action === "register_app") {
-      if (!profile.can_upload && !isAdmin) return json({ error: "No upload permission" }, 403);
-      const { filename, file_path, file_size, package_name, is_system, device_id } = body;
-      const { data, error } = await adminClient.from("app_files").insert({
-        filename, file_path, file_size: file_size || 0, package_name: package_name || null,
-        is_system: !!is_system, device_id: device_id || null, uploaded_by: userData.user.id,
-      }).select().maybeSingle();
-      if (error) return json({ error: error.message }, 400);
-      return json({ success: true, app: data });
-    }
-
     if (action === "reset_device") {
       if (!isAdmin) return json({ error: "Admin only" }, 403);
       const { device_serial } = body;
-      await adminClient.from("system_settings").upsert({
-        key: `cmd_${device_serial}_${Date.now()}`,
-        value: JSON.stringify({ command: "reset", args: "", timestamp: Date.now() }),
-        updated_by: userData.user.id,
+      await adminClient.from("device_commands").insert({
+        device_serial, command_type: "reset", command_data: {}, status: "pending", priority: 10,
       });
-      // Also delete all non-system app_files for this device
       const { data: device } = await adminClient.from("devices").select("id").eq("serial", device_serial).maybeSingle();
       if (device) {
         await adminClient.from("app_files").delete().eq("device_id", device.id).eq("is_system", false);

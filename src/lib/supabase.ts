@@ -4,52 +4,52 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
+  auth: { persistSession: true, autoRefreshToken: true },
 });
 
-export type Role = 'admin' | 'manager' | 'operator';
-
-export type Profile = {
+export interface Profile {
   id: string;
   email: string;
   full_name: string;
-  role: Role;
+  role: 'admin' | 'manager' | 'operator';
   can_control: boolean;
   can_power: boolean;
   can_upload: boolean;
   can_view: boolean;
   can_edit: boolean;
   is_active: boolean;
+  theme: string;
   created_at: string;
-};
+}
 
-export type Device = {
+export interface Device {
   id: string;
   name: string;
   serial: string;
   model: string;
   android_version: string;
-  status: 'online' | 'offline';
+  status: string;
   assigned_to: string | null;
-  vm_id: string | null;
   screen_url: string | null;
   group_label: string;
+  last_seen: string | null;
   created_at: string;
-};
+}
 
-export type Announcement = {
+export interface DeviceCommand {
   id: string;
-  title: string;
-  content: string;
-  created_by: string | null;
+  device_serial: string | null;
+  command_type: string | null;
+  command_data: Record<string, unknown> | null;
+  status: string;
+  result: Record<string, unknown> | null;
+  priority: number;
   created_at: string;
-  is_active: boolean;
-};
+  executed_at: string | null;
+  completed_at: string | null;
+}
 
-export type AppFile = {
+export interface AppFile {
   id: string;
   filename: string;
   file_path: string;
@@ -59,33 +59,19 @@ export type AppFile = {
   device_id: string | null;
   uploaded_by: string | null;
   created_at: string;
-};
+  status: string;
+}
 
-export type SystemSetting = {
+export interface Announcement {
   id: string;
-  key: string;
-  value: string;
-  updated_by: string | null;
-  updated_at: string;
-};
-
-export type DeviceRental = {
-  id: string;
-  device_id: string;
-  user_id: string;
-  assigned_by: string | null;
-  start_time: string;
-  end_time: string | null;
-  status: 'active' | 'expired' | 'returned' | 'cancelled';
-  notes: string;
+  title: string;
+  content: string;
+  created_by: string | null;
   created_at: string;
-  updated_at: string;
-  device?: { id: string; name: string; serial: string; model: string };
-  user?: { id: string; email: string; full_name: string };
-  assigner?: { id: string; email: string; full_name: string };
-};
+  is_active: boolean;
+}
 
-export type AITemplate = {
+export interface AiTemplate {
   id: string;
   name: string;
   description: string;
@@ -93,27 +79,19 @@ export type AITemplate = {
   icon: string;
   default_config: Record<string, unknown>;
   is_system: boolean;
-  created_by: string | null;
   created_at: string;
-};
+}
 
-export type AITaskStatus = 'pending' | 'running' | 'completed' | 'error' | 'stopped';
-
-export type AITask = {
+export interface AiTask {
   id: string;
   device_id: string;
-  template_id: string | null;
   task_type: string;
   task_name: string;
   config: Record<string, unknown>;
-  status: AITaskStatus;
-  progress: number;
-  current_loop: number;
-  total_loops: number;
-  result: Record<string, unknown> | null;
-  error_message: string | null;
+  status: string;
+  result: Record<string, unknown>;
   created_by: string | null;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
-};
+}

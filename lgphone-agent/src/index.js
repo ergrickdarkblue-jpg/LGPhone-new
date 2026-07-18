@@ -7,7 +7,6 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env file
 const envPath = join(__dirname, '..', '.env');
 if (existsSync(envPath)) {
   const envContent = readFileSync(envPath, 'utf-8');
@@ -16,13 +15,11 @@ if (existsSync(envPath)) {
     if (!trimmed || trimmed.startsWith('#')) continue;
     const [key, ...valueParts] = trimmed.split('=');
     const value = valueParts.join('=').replace(/^["']|["']$/g, '');
-    if (key && value && !process.env[key]) {
-      process.env[key] = value;
-    }
+    if (key && value && !process.env[key]) process.env[key] = value;
   }
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://nyuvpiztruwdmvogtwpz.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://0ec90b57d6e95fcbda19832f.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_SERVICE_KEY || SUPABASE_SERVICE_KEY === 'PASTE_YOUR_SERVICE_ROLE_KEY_HERE') {
@@ -31,11 +28,8 @@ if (!SUPABASE_SERVICE_KEY || SUPABASE_SERVICE_KEY === 'PASTE_YOUR_SERVICE_ROLE_K
   console.error('  THIẾU SUPABASE_SERVICE_ROLE_KEY');
   console.error('======================================================');
   console.error('  Agent can service_role key de cap nhat trang thai lenh.');
-  console.error('');
-  console.error('  Cach lay key:');
   console.error('  1. Mo file .env bang Notepad');
-  console.error('  2. Vao https://supabase.com/dashboard/project/');
-  console.error('     nyuvpiztruwdmvogtwpz/settings/api');
+  console.error('  2. Vao Supabase Dashboard > Settings > API');
   console.error('  3. Tim "service_role" -> Reveal -> Copy');
   console.error('  4. Dan vao file .env');
   console.error('======================================================');
@@ -65,7 +59,6 @@ async function scanDevices() {
       const deviceAdb = new ADB(serial);
       const props = await deviceAdb.getProperties();
       console.log(`  Model: ${props.model}, Android: ${props.android_version}`);
-      // Auto-register device in Supabase (upsert by serial)
       const { error: upsertErr } = await supabase.from('devices').upsert({
         serial,
         name: props.model || serial,
@@ -76,7 +69,6 @@ async function scanDevices() {
       }, { onConflict: 'serial' });
       if (upsertErr) console.log(`  [WARN] upsert failed: ${upsertErr.message}`);
     } else {
-      // Update last_seen for already connected devices
       await supabase.from('devices').update({ last_seen: new Date().toISOString() }).eq('serial', serial);
     }
   }

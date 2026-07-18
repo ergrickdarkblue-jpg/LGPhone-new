@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { FolderUp, Trash2, File, Loader2, ShieldAlert, Filter } from 'lucide-react';
 import { supabase, type AppFile, type Device } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
-import { useApp } from '../lib/app-context';
+import { useAuth, useApp } from '../lib/auth';
 
 export default function Files() {
   const { profile } = useAuth();
@@ -38,7 +37,6 @@ export default function Files() {
     setUploading(true);
     for (const file of selectedFiles) {
       const fileName = `${Date.now()}_${file.name}`;
-      await supabase.storage.createBucket('app-files', { public: false }).catch(() => {});
       const { data: uploadData } = await supabase.storage.from('app-files').upload(fileName, file);
       if (uploadData) {
         const { data: session } = await supabase.auth.getSession();
@@ -85,7 +83,7 @@ export default function Files() {
     <div className="p-6 animate-fade-in-up">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('appFiles')}</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('files')}</h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">{files.length} {t('filesCount')} — {userAppCount} {t('userApps')}, {systemAppCount} {t('systemApps')}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -94,13 +92,12 @@ export default function Files() {
           <input ref={fileInputRef} type="file" multiple accept=".apk,.aab,.zip" onChange={handleUpload} className="hidden" />
         </div>
       </div>
-
       <div className="panel p-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-[var(--text-muted)]" />
             {(['all', 'user', 'system'] as const).map(f => (
-              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? 'bg-brand-600/20 text-cyan-400 border border-cyan-400/30' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent hover:bg-white/5'}`}>
+              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-400/30' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent hover:bg-white/5'}`}>
                 {f === 'all' ? t('all') : f === 'user' ? t('userFiles') : t('systemFiles')}
               </button>
             ))}
@@ -112,7 +109,6 @@ export default function Files() {
           {deleteProgress && <span className="text-xs text-amber-400 ml-auto">{deleteProgress}</span>}
         </div>
       </div>
-
       {loading ? (
         <div className="h-64 flex items-center justify-center text-[var(--text-muted)]"><Loader2 className="w-6 h-6 animate-spin" /></div>
       ) : filtered.length === 0 ? (
@@ -144,7 +140,6 @@ export default function Files() {
           ))}
         </div>
       )}
-
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in-up">
           <div className="panel max-w-md w-full">

@@ -1,183 +1,97 @@
-import { useEffect, useState } from 'react';
-import { AuthProvider, useAuth } from './lib/auth';
-import { AppProvider, useApp } from './lib/app-context';
-import { supabase } from './lib/supabase';
+import { useState } from 'react';
+import { LayoutDashboard, Smartphone, FileText, Users, Megaphone, Package, LogOut, Menu, X, Globe } from 'lucide-react';
+import { useAuth, useApp } from './lib/auth';
 import Login from './components/Login';
-import Sidebar, { type ViewName } from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Devices from './components/Devices';
-import DeviceRentals from './components/DeviceRentals';
-import Users from './components/Users';
-import Announcements from './components/Announcements';
 import Files from './components/Files';
-import Settings from './components/Settings';
-import AI from './components/AI';
-import { Smartphone, Menu, Shield, Loader2, Mail, Lock, User as UserIcon, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import UsersView from './components/Users';
+import Announcements from './components/Announcements';
+import AgentDownload from './components/AgentDownload';
 
-function MainApp() {
-  const { session, profile, loading } = useAuth();
-  const { t } = useApp();
-  const [view, setView] = useState<ViewName>('dashboard');
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [needsAdminSetup, setNeedsAdminSetup] = useState<boolean | null>(null);
+type View = 'dashboard' | 'devices' | 'files' | 'users' | 'announcements' | 'agent';
 
-  useEffect(() => {
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin')
-      .then(({ count }) => { setNeedsAdminSetup(count === 0); });
-  }, []);
+export default function App() {
+  const { profile, loading, signOut } = useAuth();
+  const { t, lang, setLang } = useApp();
+  const [view, setView] = useState<View>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center tech-grid-bg">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center glow-brand animate-pulse">
-            <Smartphone className="w-8 h-8 text-white" strokeWidth={2.5} />
-          </div>
-          <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
-          <p className="text-xs text-[var(--text-muted)]">{t('loading')}</p>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center text-cyan-400"><div className="w-8 h-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" /></div>;
   }
 
-  if (needsAdminSetup && !session) return <AdminSetup onDone={() => setNeedsAdminSetup(false)} />;
-  if (!session || !profile) return <Login />;
-
-  if (!profile.is_active) {
-    return (
-      <div className="min-h-screen flex items-center justify-center tech-grid-bg p-4">
-        <div className="panel p-8 max-w-md text-center">
-          <Shield className="w-12 h-12 text-red-400/50 mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">{t('accountLocked')}</h2>
-          <p className="text-sm text-[var(--text-secondary)]">{t('contactAdmin')}</p>
-        </div>
-      </div>
-    );
+  if (!profile) {
+    return <Login />;
   }
 
-  // Block operators from accessing settings
-  const canAccessSettings = profile.role === 'admin' || profile.role === 'manager';
-  const effectiveView = (view === 'settings' && !canAccessSettings) ? 'dashboard' : view;
+  const isAdmin = profile.role === 'admin';
 
-  return (
-    <div className="flex h-screen overflow-hidden tech-grid-bg">
-      <Sidebar
-        current={effectiveView}
-        onNavigate={setView}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
-        mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="md:hidden h-14 flex items-center gap-3 px-4 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
-          <button onClick={() => setMobileOpen(true)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><Menu className="w-5 h-5" /></button>
-          <div className="flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-cyan-400" />
-            <span className="font-bold text-[var(--text-primary)]">LG<span className="text-cyan-400">Phone</span></span>
-          </div>
-        </div>
-        <main className="flex-1 overflow-y-auto">
-          {effectiveView === 'dashboard' && <Dashboard onNavigate={setView} />}
-          {effectiveView === 'devices' && <Devices />}
-          {effectiveView === 'rentals' && <DeviceRentals />}
-          {effectiveView === 'ai' && <AI />}
-          {effectiveView === 'users' && <Users />}
-          {effectiveView === 'announcements' && <Announcements />}
-          {effectiveView === 'files' && <Files />}
-          {effectiveView === 'settings' && <Settings />}
-        </main>
-      </div>
-    </div>
-  );
-}
+  const navItems: { id: View; label: string; icon: React.ComponentType<{ className?: string }>; show: boolean }[] = [
+    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, show: true },
+    { id: 'devices', label: t('devices'), icon: Smartphone, show: profile.can_view || isAdmin },
+    { id: 'files', label: t('files'), icon: FileText, show: profile.can_view || isAdmin },
+    { id: 'users', label: t('users'), icon: Users, show: isAdmin },
+    { id: 'announcements', label: t('announcements'), icon: Megaphone, show: true },
+    { id: 'agent', label: t('agentDownload'), icon: Package, show: isAdmin },
+  ];
 
-function AdminSetup({ onDone }: { onDone: () => void }) {
-  const { t } = useApp();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [showPass, setShowPass] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-
-  const handleSetup = async () => {
-    setLoading(true); setError('');
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lgphone-admin?action=seed_admin`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, full_name: fullName }),
-    });
-    const json = await res.json();
-    if (json.error) setError(json.error);
-    else { setSuccess(true); setTimeout(onDone, 2000); }
-    setLoading(false);
+  const renderView = () => {
+    switch (view) {
+      case 'dashboard': return <Dashboard />;
+      case 'devices': return <Devices />;
+      case 'files': return <Files />;
+      case 'users': return <UsersView />;
+      case 'announcements': return <Announcements />;
+      case 'agent': return <AgentDownload />;
+    }
   };
 
   return (
-    <div className="min-h-screen w-full tech-grid-bg flex items-center justify-center p-4 relative overflow-hidden" style={{ background: '#060910' }}>
-      <div className="absolute top-1/3 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="relative z-10 w-full max-w-md animate-fade-in-up">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-brand-700 glow-cyan mb-4">
-            <Shield className="w-8 h-8 text-white" strokeWidth={2.5} />
+    <div className="min-h-screen bg-[var(--bg-primary)] flex">
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[var(--bg-secondary)] border-r border-white/10 flex flex-col transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="p-5 flex items-center gap-2.5 border-b border-white/10">
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/20 flex items-center justify-center border border-cyan-400/30">
+            <Smartphone className="w-5 h-5 text-cyan-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white">{t('initialSetup')}</h1>
-          <p className="text-sm text-slate-400 mt-1">{t('setupDesc')}</p>
+          <div>
+            <div className="text-sm font-bold text-[var(--text-primary)]">LGPhone</div>
+            <div className="text-[10px] text-[var(--text-muted)]">Control Panel</div>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
         </div>
-        {success ? (
-          <div className="panel p-8 text-center" style={{ background: '#0c1220' }}>
-            <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold text-white">{t('adminCreated')}</h2>
-            <p className="text-sm text-slate-400 mt-1">{t('adminCreatedDesc')}</p>
-          </div>
-        ) : (
-          <div className="panel p-8 glow-cyan" style={{ background: '#0c1220', borderColor: 'rgba(80,130,220,0.12)' }}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">{t('fullName')}</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Administrator" className="tech-input pl-10" style={{ background: 'rgba(255,255,255,0.03)', color: '#e8f0ff' }} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">{t('email')}</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@lgphone.system" className="tech-input pl-10" style={{ background: 'rgba(255,255,255,0.03)', color: '#e8f0ff' }} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">{t('password')}</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input type={showPass ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="tech-input pl-10 pr-12" style={{ background: 'rgba(255,255,255,0.03)', color: '#e8f0ff' }} />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="pass-toggle-btn active" style={{ right: '0.5rem' }}>
-                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</div>}
-              <button onClick={handleSetup} disabled={loading || !email || !password} className="btn-3d btn-3d-cyan w-full">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />} {t('createAdmin')}
-              </button>
+        <nav className="flex-1 p-3 space-y-1">
+          {navItems.filter(n => n.show).map(item => (
+            <button key={item.id} onClick={() => { setView(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${view === item.id ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-400/20' : 'text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] border border-transparent'}`}>
+              <item.icon className="w-4 h-4" /> {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="p-3 border-t border-white/10 space-y-2">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-xs font-semibold text-cyan-400">{profile.full_name?.[0]?.toUpperCase() || 'U'}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-[var(--text-primary)] truncate">{profile.full_name || profile.email}</div>
+              <div className="text-[10px] text-[var(--text-muted)]">{t(profile.role)}</div>
             </div>
           </div>
-        )}
-      </div>
+          <button onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:bg-white/5 transition">
+            <Globe className="w-3.5 h-3.5" /> {lang === 'vi' ? 'English' : 'Tiếng Việt'}
+          </button>
+          <button onClick={signOut} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition">
+            <LogOut className="w-3.5 h-3.5" /> {t('signOut')}
+          </button>
+        </div>
+      </aside>
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <header className="lg:hidden sticky top-0 z-20 bg-[var(--bg-secondary)]/80 backdrop-blur-sm border-b border-white/10 p-4 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)}><Menu className="w-5 h-5 text-[var(--text-secondary)]" /></button>
+          <span className="text-sm font-semibold text-[var(--text-primary)]">{navItems.find(n => n.id === view)?.label}</span>
+        </header>
+        {renderView()}
+      </main>
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <AppProvider>
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
-    </AppProvider>
   );
 }
