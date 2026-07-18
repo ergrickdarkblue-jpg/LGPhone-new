@@ -11,6 +11,6 @@
 ## .env
 
 ```
-SUPABASE_URL=https://niqrkxhezmuhkphckidw.supabase.co
+SUPABASE_URL=https://0ec90b57d6e95fcbda19832f.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```

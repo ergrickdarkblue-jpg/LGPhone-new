@@ -19,7 +19,7 @@ if (existsSync(envPath)) {
   }
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://niqrkxhezmuhkphckidw.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://0ec90b57d6e95fcbda19832f.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_SERVICE_KEY || SUPABASE_SERVICE_KEY === 'PASTE_YOUR_SERVICE_ROLE_KEY_HERE') {
