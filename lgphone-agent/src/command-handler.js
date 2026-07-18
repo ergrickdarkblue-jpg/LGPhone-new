@@ -9,7 +9,7 @@ async function downloadApk(storagePath) {
   try {
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(
-      process.env.SUPABASE_URL || 'https://mcehliagbaheuqondqhd.supabase.co',
+      process.env.SUPABASE_URL || 'https://niqrkxhezmuhkphckidw.supabase.co',
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     const { data, error } = await supabase.storage.from('app-files').download(storagePath);
@@ -37,7 +37,7 @@ export async function executeCommand(command) {
       if (!shotResult.success) return shotResult;
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
-        process.env.SUPABASE_URL || 'https://mcehliagbaheuqondqhd.supabase.co',
+        process.env.SUPABASE_URL || 'https://niqrkxhezmuhkphckidw.supabase.co',
         process.env.SUPABASE_SERVICE_ROLE_KEY
       );
       const fileBuffer = readFileSync(shotResult.output);
@@ -77,7 +77,7 @@ export async function executeCommand(command) {
         const status = installResult.success ? 'installed' : 'failed';
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(
-          process.env.SUPABASE_URL || 'https://mcehliagbaheuqondqhd.supabase.co',
+          process.env.SUPABASE_URL || 'https://niqrkxhezmuhkphckidw.supabase.co',
           process.env.SUPABASE_SERVICE_ROLE_KEY
         );
         await supabase.from('app_files').update({ status }).eq('id', app_file_id);
